@@ -24,23 +24,36 @@ const io = new Server(server, {
     cors: { origin: '*' }
 });
 
-// Configure Multer for image uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/uploads/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configure Multer for image uploads (Memory storage for Supabase)
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Upload Endpoint
-app.post('/api/upload', upload.single('image'), (req, res) => {
+app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const imageUrl = `http://${req.hostname}:3001/uploads/${req.file.filename}`;
-    res.json({ imageUrl });
+    
+    try {
+        const file = req.file;
+        const fileName = `${Date.now()}-${file.originalname.replace(/[^a-z0-9.]/gi, '_').toLowerCase()}`;
+        
+        const { data, error } = await supabase.storage
+            .from('quiz-images')
+            .upload(fileName, file.buffer, {
+                contentType: file.mimetype,
+                upsert: true
+            });
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('quiz-images')
+            .getPublicUrl(fileName);
+
+        res.json({ imageUrl: publicUrl });
+    } catch (err) {
+        console.error("Supabase Upload Error:", err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // === API REST Endpoints (Supabase) ===
