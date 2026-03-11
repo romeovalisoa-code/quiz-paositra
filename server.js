@@ -17,7 +17,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'))); // Serve uploaded images
 app.use(express.static(path.join(__dirname, 'dist'))); // Serve the React build
 const server = createServer(app);
 const io = new Server(server, {
@@ -320,6 +319,6 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Serveur en écoute sur le port ${PORT}`);
 });
